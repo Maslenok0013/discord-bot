@@ -1,107 +1,79 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import Modal, TextInput, View, Button
 from dotenv import load_dotenv
 import os
+import asyncio
 
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
-
-def get_channel_id(name, default):
-    value = os.getenv(name)
-
-    if value is None:
-        return default
-
-    if value.isdigit():
-        return int(value)
-
-    return default
-
-
-FORM_CHANNEL_ID = get_channel_id("FORM_CHANNEL_ID", 1482025460304183460)
-LOG_CHANNEL_ID = get_channel_id("LOG_CHANNEL_ID", 1481012670210773084)
-
+FORM_CHANNEL_ID = int(os.getenv("FORM_CHANNEL_ID", 1482025460304183460))
+LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID", 1481012670210773084))
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.messages = True
+intents.guilds = True
 
 bot = commands.Bot(command_prefix="s!", intents=intents)
 
 
 class ContractModal(Modal):
-
     def __init__(self):
         super().__init__(title="Форма контракта")
 
         self.contract_name = TextInput(label="Название контракта")
         self.add_item(self.contract_name)
 
-        self.contract_screen = TextInput(label="Скрин контракта (с исполнителями)")
-        self.add_item(self.contract_screen)
-
         self.contract_tags = TextInput(label="Тэг исполнителей")
         self.add_item(self.contract_tags)
 
     async def on_submit(self, interaction: discord.Interaction):
-
         log_channel = bot.get_channel(LOG_CHANNEL_ID)
-
         if log_channel is None:
             await interaction.response.send_message(
-                "❌ Канал логов не найден.",
-                ephemeral=True
+                "❌ Канал для логов не найден.", ephemeral=True
             )
             return
+
+        # Проверяем, есть ли прикреплённый файл
+        attachment_url = None
+        if interaction.message.attachments:
+            attachment_url = interaction.message.attachments[0].url
 
         embed = discord.Embed(
             title="📄 Новый контракт",
             color=discord.Color.green()
         )
+        embed.add_field(name="Игрок", value=interaction.user.mention, inline=False)
+        embed.add_field(name="Название", value=self.contract_name.value, inline=False)
+        embed.add_field(name="Исполнители", value=self.contract_tags.value, inline=False)
 
-        embed.add_field(
-            name="Игрок",
-            value=interaction.user.mention,
-            inline=False
-        )
-
-        embed.add_field(
-            name="Название",
-            value=self.contract_name.value,
-            inline=False
-        )
-
-        embed.add_field(
-            name="Скрин контракта",
-            value=self.contract_screen.value,
-            inline=False
-        )
-
-        embed.add_field(
-            name="Исполнители",
-            value=self.contract_tags.value,
-            inline=False
-        )
+        if attachment_url:
+            embed.set_image(url=attachment_url)
 
         await log_channel.send(embed=embed)
 
+        # Уведомление пользователю
         await interaction.response.send_message(
-            "✅ Контракт отправлен!",
-            ephemeral=True
+            "✅ Контракт отправлен!", ephemeral=True
         )
+
+        # Удаляем сообщение с вложением через 2 минуты
+        if interaction.message.attachments:
+            await asyncio.sleep(120)
+            try:
+                await interaction.message.delete()
+            except:
+                pass
 
 
 class ContractView(View):
-
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(
-        label="Создать контракт",
-        style=discord.ButtonStyle.green,
-        custom_id="create_contract_button"
-    )
+    @discord.ui.button(label="Создать контракт", style=discord.ButtonStyle.green, custom_id="create_contract_button")
     async def create_contract(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(ContractModal())
 
@@ -110,23 +82,20 @@ class ContractView(View):
 async def on_ready():
     print(f"Бот запущен как {bot.user}")
 
-    bot.add_view(ContractView())
-
-
-@bot.command()
-async def setup(ctx):
-
-    if ctx.channel.id != FORM_CHANNEL_ID:
-        await ctx.send("❌ Использовать можно только в канале формы.")
-        return
-
-    embed = discord.Embed(
-        title="📜 Система контрактов",
-        description="Нажмите кнопку ниже чтобы создать контракт",
-        color=discord.Color.blue()
-    )
-
-    await ctx.send(embed=embed, view=ContractView())
+    # Добавляем кнопку один раз
+    channel = bot.get_channel(FORM_CHANNEL_ID)
+    if channel:
+        try:
+            # Проверяем, есть ли сообщение с кнопкой (чтобы не дублировать)
+            async for msg in channel.history(limit=50):
+                if msg.author == bot.user and msg.components:
+                    break
+            else:
+                await channel.send(
+                    "Нажмите кнопку ниже, чтобы создать контракт", view=ContractView()
+                )
+        except Exception as e:
+            print("Ошибка при отправке кнопки:", e)
 
 
 @bot.command()
