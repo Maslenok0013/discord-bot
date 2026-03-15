@@ -35,17 +35,12 @@ class ContractModal(Modal):
     def __init__(self):
         super().__init__(title="Форма контракта")
 
+        # 1. Название контракта
         self.contract_name = TextInput(label="Название контракта")
         self.add_item(self.contract_name)
 
-        self.contract_screen = TextInput(
-            label="Скрин контракта (можно вставить ссылку или Discord attachment)",
-            style=discord.TextStyle.paragraph,
-            required=False
-        )
-        self.add_item(self.contract_screen)
-
-        self.contract_tags = TextInput(label="Тэг исполнителей")
+        # 2. Тэг исполнителей с наградой
+        self.contract_tags = TextInput(label="Тэг исполнителей и награда")
         self.add_item(self.contract_tags)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -63,8 +58,7 @@ class ContractModal(Modal):
         )
         embed.add_field(name="Игрок", value=interaction.user.mention, inline=False)
         embed.add_field(name="Название", value=self.contract_name.value, inline=False)
-        embed.add_field(name="Скрин контракта", value=self.contract_screen.value or "Не прикреплён", inline=False)
-        embed.add_field(name="Исполнители", value=self.contract_tags.value, inline=False)
+        embed.add_field(name="Исполнители и награда", value=self.contract_tags.value, inline=False)
 
         # Отправляем embed
         message = await log_channel.send(embed=embed)
@@ -82,7 +76,7 @@ class ContractModal(Modal):
 class ContractView(View):
     def __init__(self):
         super().__init__(timeout=None)  # persistent view
-        # Только одна кнопка, без декоратора
+        # Только одна кнопка
         self.add_item(
             Button(
                 label="Создать контракт",
@@ -92,7 +86,6 @@ class ContractView(View):
         )
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        # Обрабатываем нажатие кнопки вручную
         if interaction.data.get("custom_id") == "create_contract_button":
             await interaction.response.send_modal(ContractModal())
         return True
