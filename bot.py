@@ -7,8 +7,22 @@ import os
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
-FORM_CHANNEL_ID = int(os.getenv("FORM_CHANNEL_ID", 1482025460304183460))
-LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID", 1481012670210773084))
+
+def get_channel_id(name, default):
+    value = os.getenv(name)
+
+    if value is None:
+        return default
+
+    if value.isdigit():
+        return int(value)
+
+    return default
+
+
+FORM_CHANNEL_ID = get_channel_id("FORM_CHANNEL_ID", 1482025460304183460)
+LOG_CHANNEL_ID = get_channel_id("LOG_CHANNEL_ID", 1481012670210773084)
+
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -31,11 +45,12 @@ class ContractModal(Modal):
         self.add_item(self.contract_tags)
 
     async def on_submit(self, interaction: discord.Interaction):
+
         log_channel = bot.get_channel(LOG_CHANNEL_ID)
 
         if log_channel is None:
             await interaction.response.send_message(
-                "❌ Канал для логов не найден.",
+                "❌ Канал логов не найден.",
                 ephemeral=True
             )
             return
@@ -95,27 +110,28 @@ class ContractView(View):
 async def on_ready():
     print(f"Бот запущен как {bot.user}")
 
-    # сохраняет кнопку после перезапуска
     bot.add_view(ContractView())
+
+
+@bot.command()
+async def setup(ctx):
+
+    if ctx.channel.id != FORM_CHANNEL_ID:
+        await ctx.send("❌ Использовать можно только в канале формы.")
+        return
+
+    embed = discord.Embed(
+        title="📜 Система контрактов",
+        description="Нажмите кнопку ниже чтобы создать контракт",
+        color=discord.Color.blue()
+    )
+
+    await ctx.send(embed=embed, view=ContractView())
 
 
 @bot.command()
 async def ping(ctx):
     await ctx.send(f"Pong! {round(bot.latency * 1000)}ms")
-
-
-# команда для создания кнопки (используется 1 раз)
-@bot.command()
-async def setup(ctx):
-
-    if ctx.channel.id != FORM_CHANNEL_ID:
-        await ctx.send("❌ Эту команду можно использовать только в канале формы.")
-        return
-
-    await ctx.send(
-        "Нажмите кнопку ниже, чтобы создать контракт",
-        view=ContractView()
-    )
 
 
 bot.run(TOKEN)
