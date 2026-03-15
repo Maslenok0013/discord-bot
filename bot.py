@@ -82,7 +82,11 @@ class ContractView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Создать контракт", style=discord.ButtonStyle.green)
+    @discord.ui.button(
+        label="Создать контракт",
+        style=discord.ButtonStyle.green,
+        custom_id="create_contract_button"
+    )
     async def create_contract(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(ContractModal())
 
@@ -91,17 +95,27 @@ class ContractView(View):
 async def on_ready():
     print(f"Бот запущен как {bot.user}")
 
-    channel = bot.get_channel(FORM_CHANNEL_ID)
-    if channel:
-        await channel.send(
-            "Нажмите кнопку ниже, чтобы создать контракт",
-            view=ContractView()
-        )
+    # сохраняет кнопку после перезапуска
+    bot.add_view(ContractView())
 
 
 @bot.command()
 async def ping(ctx):
     await ctx.send(f"Pong! {round(bot.latency * 1000)}ms")
+
+
+# команда для создания кнопки (используется 1 раз)
+@bot.command()
+async def setup(ctx):
+
+    if ctx.channel.id != FORM_CHANNEL_ID:
+        await ctx.send("❌ Эту команду можно использовать только в канале формы.")
+        return
+
+    await ctx.send(
+        "Нажмите кнопку ниже, чтобы создать контракт",
+        view=ContractView()
+    )
 
 
 bot.run(TOKEN)
