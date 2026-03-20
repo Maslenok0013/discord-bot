@@ -3,7 +3,6 @@ from discord.ext import commands
 from discord.ui import Modal, TextInput, View, Button
 from dotenv import load_dotenv
 import os
-import asyncio
 
 # Загружаем .env
 load_dotenv()
@@ -35,11 +34,9 @@ class ContractModal(Modal):
     def __init__(self):
         super().__init__(title="Форма контракта")
 
-        # 1. Название контракта
         self.contract_name = TextInput(label="Название контракта")
         self.add_item(self.contract_name)
 
-        # 2. Тэг исполнителей с наградой
         self.contract_tags = TextInput(label="Тэг исполнителей и награда")
         self.add_item(self.contract_tags)
 
@@ -56,16 +53,27 @@ class ContractModal(Modal):
             title="📄 Новый контракт",
             color=discord.Color.green()
         )
-        embed.add_field(name="Игрок", value=interaction.user.mention, inline=False)
-        embed.add_field(name="Название", value=self.contract_name.value, inline=False)
-        embed.add_field(name="Исполнители и награда", value=self.contract_tags.value, inline=False)
 
-        # Отправляем embed
-        message = await log_channel.send(embed=embed)
+        embed.add_field(
+            name="Игрок",
+            value=interaction.user.mention,
+            inline=False
+        )
 
-        # Удаляем сообщение через 60 секунд
-        await asyncio.sleep(60)
-        await message.delete()
+        embed.add_field(
+            name="Название",
+            value=self.contract_name.value,
+            inline=False
+        )
+
+        embed.add_field(
+            name="Исполнители и награда",
+            value=self.contract_tags.value,
+            inline=False
+        )
+
+        # ✅ Просто отправляем (БЕЗ удаления)
+        await log_channel.send(embed=embed)
 
         await interaction.response.send_message(
             "✅ Контракт отправлен!",
@@ -75,8 +83,8 @@ class ContractModal(Modal):
 # ---------- ВИД С КНОПКОЙ ----------
 class ContractView(View):
     def __init__(self):
-        super().__init__(timeout=None)  # persistent view
-        # Только одна кнопка
+        super().__init__(timeout=None)
+
         self.add_item(
             Button(
                 label="Создать контракт",
@@ -95,10 +103,8 @@ class ContractView(View):
 async def on_ready():
     print(f"Бот запущен как {bot.user}")
 
-    # Добавляем persistent view
     bot.add_view(ContractView())
 
-    # Отправляем кнопку в канал, если её там ещё нет
     form_channel = bot.get_channel(FORM_CHANNEL_ID)
     if form_channel:
         existing = False
@@ -106,13 +112,17 @@ async def on_ready():
             if msg.author == bot.user and msg.components:
                 existing = True
                 break
+
         if not existing:
-            await form_channel.send("Нажмите кнопку ниже, чтобы создать контракт", view=ContractView())
+            await form_channel.send(
+                "Нажмите кнопку ниже, чтобы создать контракт",
+                view=ContractView()
+            )
 
 # ---------- КОМАНДЫ ----------
 @bot.command()
 async def ping(ctx):
     await ctx.send(f"Pong! {round(bot.latency * 1000)}ms")
 
-# ---------- ЗАПУСК БОТА ----------
+# ---------- ЗАПУСК ----------
 bot.run(TOKEN)
