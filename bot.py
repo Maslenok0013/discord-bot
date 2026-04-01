@@ -23,9 +23,15 @@ TOKEN = os.getenv("TOKEN")
 FORM_CHANNEL_ID = get_env_int("FORM_CHANNEL_ID", 1482025460304183460)
 LOG_CHANNEL_ID = get_env_int("LOG_CHANNEL_ID", 1481012670210773084)
 
+# ❗ ДОБАВЛЕНО
+ROLE_ID = 123456789012345678  # <-- ВСТАВЬ СЮДА ID РОЛИ
+REACTION_CHANNEL_ID = 1482024804642193601  # твой канал
+
 # Интенты
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
+intents.reactions = True
 
 bot = commands.Bot(command_prefix="s!", intents=intents)
 
@@ -72,7 +78,6 @@ class ContractModal(Modal):
             inline=False
         )
 
-        # ✅ Просто отправляем (БЕЗ удаления)
         await log_channel.send(embed=embed)
 
         await interaction.response.send_message(
@@ -118,6 +123,59 @@ async def on_ready():
                 "Нажмите кнопку ниже, чтобы создать контракт",
                 view=ContractView()
             )
+
+# ---------- ✅ РЕАКЦИИ (ДОБАВЛЕНО) ----------
+@bot.event
+async def on_raw_reaction_add(payload):
+    if payload.channel_id != REACTION_CHANNEL_ID:
+        return
+
+    if str(payload.emoji) != "✅":
+        return
+
+    guild = bot.get_guild(payload.guild_id)
+    if not guild:
+        return
+
+    member = guild.get_member(payload.user_id)
+    if not member or member.bot:
+        return
+
+    role = guild.get_role(ROLE_ID)
+    if not role:
+        return
+
+    await member.add_roles(role)
+
+    log_channel = bot.get_channel(LOG_CHANNEL_ID)
+    if log_channel:
+        await log_channel.send(f"✅ {member.mention} получил роль {role.name}")
+
+@bot.event
+async def on_raw_reaction_remove(payload):
+    if payload.channel_id != REACTION_CHANNEL_ID:
+        return
+
+    if str(payload.emoji) != "✅":
+        return
+
+    guild = bot.get_guild(payload.guild_id)
+    if not guild:
+        return
+
+    member = guild.get_member(payload.user_id)
+    if not member:
+        return
+
+    role = guild.get_role(ROLE_ID)
+    if not role:
+        return
+
+    await member.remove_roles(role)
+
+    log_channel = bot.get_channel(LOG_CHANNEL_ID)
+    if log_channel:
+        await log_channel.send(f"❌ {member.mention} потерял роль {role.name}")
 
 # ---------- КОМАНДЫ ----------
 @bot.command()
