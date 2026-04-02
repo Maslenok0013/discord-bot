@@ -22,10 +22,11 @@ def get_env_int(name: str, default: int) -> int:
 TOKEN = os.getenv("TOKEN")
 FORM_CHANNEL_ID = get_env_int("FORM_CHANNEL_ID", 1482025460304183460)
 LOG_CHANNEL_ID = get_env_int("LOG_CHANNEL_ID", 1481012670210773084)
-ROLE_ID = get_env_int("ROLE_ID", 0)
-print("ROLE_ID:", ROLE_ID)
 
-# ❗ канал с реакциями
+# ✅ ВСТАВЛЕН ТВОЙ ROLE_ID
+ROLE_ID = 1467619367733690379
+
+# ✅ Канал с реакциями
 REACTION_CHANNEL_ID = 1482024804642193601
 
 # Интенты
@@ -61,23 +62,9 @@ class ContractModal(Modal):
             color=discord.Color.green()
         )
 
-        embed.add_field(
-            name="Игрок",
-            value=interaction.user.mention,
-            inline=False
-        )
-
-        embed.add_field(
-            name="Название",
-            value=self.contract_name.value,
-            inline=False
-        )
-
-        embed.add_field(
-            name="Исполнители и награда",
-            value=self.contract_tags.value,
-            inline=False
-        )
+        embed.add_field(name="Игрок", value=interaction.user.mention, inline=False)
+        embed.add_field(name="Название", value=self.contract_name.value, inline=False)
+        embed.add_field(name="Исполнители и награда", value=self.contract_tags.value, inline=False)
 
         await log_channel.send(embed=embed)
 
