@@ -22,10 +22,10 @@ def get_env_int(name: str, default: int) -> int:
 TOKEN = os.getenv("TOKEN")
 FORM_CHANNEL_ID = get_env_int("FORM_CHANNEL_ID", 1482025460304183460)
 LOG_CHANNEL_ID = get_env_int("LOG_CHANNEL_ID", 1481012670210773084)
+ROLE_ID = get_env_int("ROLE_ID", 0)
 
-# ❗ ДОБАВЛЕНО
-ROLE_ID = 123456789012345678  # <-- ВСТАВЬ СЮДА ID РОЛИ
-REACTION_CHANNEL_ID = 1482024804642193601  # твой канал
+# ❗ канал с реакциями
+REACTION_CHANNEL_ID = 1482024804642193601
 
 # Интенты
 intents = discord.Intents.default()
@@ -124,35 +124,48 @@ async def on_ready():
                 view=ContractView()
             )
 
-# ---------- ✅ РЕАКЦИИ (ДОБАВЛЕНО) ----------
+# ---------- ✅ РЕАКЦИИ ----------
 @bot.event
 async def on_raw_reaction_add(payload):
+    print("🔥 Реакция обнаружена:", payload.channel_id, str(payload.emoji))
+
     if payload.channel_id != REACTION_CHANNEL_ID:
+        print("❌ Не тот канал")
         return
 
     if str(payload.emoji) != "✅":
+        print("❌ Не та реакция")
         return
 
     guild = bot.get_guild(payload.guild_id)
     if not guild:
+        print("❌ Сервер не найден")
         return
 
     member = guild.get_member(payload.user_id)
     if not member or member.bot:
+        print("❌ Пользователь не найден или это бот")
         return
 
     role = guild.get_role(ROLE_ID)
     if not role:
+        print("❌ Роль не найдена")
         return
 
-    await member.add_roles(role)
+    try:
+        await member.add_roles(role)
+        print(f"✅ Роль выдана: {member.name}")
 
-    log_channel = bot.get_channel(LOG_CHANNEL_ID)
-    if log_channel:
-        await log_channel.send(f"✅ {member.mention} получил роль {role.name}")
+        log_channel = bot.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            await log_channel.send(f"✅ {member.mention} получил роль {role.name}")
+    except Exception as e:
+        print("❌ Ошибка при выдаче роли:", e)
 
 @bot.event
 async def on_raw_reaction_remove(payload):
+    print("🔥 Удаление реакции:", payload.channel_id, str(payload.emoji))
+
     if payload.channel_id != REACTION_CHANNEL_ID:
         return
 
@@ -171,11 +184,15 @@ async def on_raw_reaction_remove(payload):
     if not role:
         return
 
-    await member.remove_roles(role)
+    try:
+        await member.remove_roles(role)
+        print(f"❌ Роль снята: {member.name}")
 
-    log_channel = bot.get_channel(LOG_CHANNEL_ID)
-    if log_channel:
-        await log_channel.send(f"❌ {member.mention} потерял роль {role.name}")
+        log_channel = bot.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            await log_channel.send(f"❌ {member.mention} потерял роль {role.name}")
+    except Exception as e:
+        print("❌ Ошибка при снятии роли:", e)
 
 # ---------- КОМАНДЫ ----------
 @bot.command()
